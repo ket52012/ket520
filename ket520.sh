@@ -1,14 +1,65 @@
 #!/bin/bash
 
-# 显示菜单
+# 子菜单函数：部署 RustDesk 中继服务
+rustdesk_menu() {
+    echo "部署 RustDesk 中继服务"
+    echo "请选择一个功能："
+    echo "1. 开放端口 (21115-21116/tcp, 21116/udp, 8000/tcp)"
+    echo "2. 安装 RustDesk 中继服务"  # 标题简化，显示 Key 放在代码中
+    echo "0. 返回主菜单"
+    read -p "请输入选项 (0-2): " subchoice
+
+    case $subchoice in
+        1)
+            echo "正在开放指定端口..."
+            systemctl start firewalld
+            systemctl enable firewalld
+            firewall-cmd --permanent --add-port=21115-21116/tcp
+            firewall-cmd --permanent --add-port=8000/tcp
+            firewall-cmd --permanent --add-port=21116/udp
+            firewall-cmd --reload
+            echo "端口已开放：21115-21116/tcp, 21116/udp, 8000/tcp"
+            ;;
+        2)
+            echo "正在安装 RustDesk 中继服务..."
+            wget https://raw.githubusercontent.com/techahold/rustdeskinstall/master/install.sh
+            chmod +x install.sh
+            # 执行安装并捕获输出
+            ./install.sh | tee rustdesk_install.log
+            echo "安装完成！"
+            echo "正在提取中继服务的 Key..."
+            # 假设 Key 在安装输出中包含 "Your key" 或类似关键字
+            KEY=$(grep -i "key" rustdesk_install.log | awk '{print $NF}')
+            if [ -n "$KEY" ]; then
+                echo "中继服务的 Key 是：$KEY"
+            elif [ -f "/etc/rustdesk/id" ]; then
+                echo "中继服务的 Key 是："
+                cat /etc/rustdesk/id
+            else
+                echo "未找到 Key，请检查安装日志或手动查看 /etc/rustdesk/ 目录。"
+            fi
+            rm -f rustdesk_install.log  # 清理临时日志
+            ;;
+        0)
+            echo "返回主菜单..."
+            return
+            ;;
+        *)
+            echo "无效选项，请输入 0-2 之间的数字！"
+            ;;
+    esac
+}
+
+# 主菜单
 echo "欢迎使用 Ket520 的 CentOS 指令库！"
 echo "请选择一个功能："
 echo "1. 安装节点面板 (x-ui)"
 echo "2. 安装 BBR 加速"
 echo "3. 关闭防火墙"
 echo "4. 修复无法下载 GitHub 文件"
+echo "5. 部署 RustDesk 中继服务"  # 子菜单
 echo "0. 退出"
-read -p "请输入选项 (0-4): " choice
+read -p "请输入选项 (0-5): " choice
 
 # 根据选择执行对应功能
 case $choice in
@@ -35,12 +86,15 @@ case $choice in
         sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
         echo "修复完成，请尝试再次下载！"
         ;;
+    5)
+        rustdesk_menu  # 调用子菜单
+        ;;
     0)
         echo "退出脚本，谢谢使用！"
         exit 0
         ;;
     *)
-        echo "无效选项，请输入 0-4 之间的数字！"
+        echo "无效选项，请输入 0-5 之间的数字！"
         exit 1
         ;;
 esac
