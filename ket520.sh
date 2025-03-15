@@ -5,12 +5,20 @@ rustdesk_menu() {
     echo "部署 RustDesk 中继服务"
     echo "请选择一个功能："
     echo "1. 开放端口 (21115-21116/tcp, 21116/udp, 8000/tcp)"
-    echo "2. 安装 RustDesk 中继服务"  # 标题简化，显示 Key 放在代码中
+    echo "2. 安装 RustDesk 中继服务"
     echo "0. 返回主菜单"
     read -p "请输入选项 (0-2): " subchoice
 
     case $subchoice in
         1)
+            echo "正在检查并安装 firewalld..."
+            if ! command -v firewall-cmd &> /dev/null; then
+                yum install -y firewalld
+                if [ $? -ne 0 ]; then
+                    echo "安装 firewalld 失败，请检查网络或 yum 配置！"
+                    return
+                fi
+            fi
             echo "正在开放指定端口..."
             systemctl start firewalld
             systemctl enable firewalld
@@ -24,11 +32,10 @@ rustdesk_menu() {
             echo "正在安装 RustDesk 中继服务..."
             wget https://raw.githubusercontent.com/techahold/rustdeskinstall/master/install.sh
             chmod +x install.sh
-            # 执行安装并捕获输出
-            ./install.sh | tee rustdesk_install.log
+            # 自动输入 1 选择本机 IP，并捕获输出
+            echo "1" | ./install.sh | tee rustdesk_install.log
             echo "安装完成！"
             echo "正在提取中继服务的 Key..."
-            # 假设 Key 在安装输出中包含 "Your key" 或类似关键字
             KEY=$(grep -i "key" rustdesk_install.log | awk '{print $NF}')
             if [ -n "$KEY" ]; then
                 echo "中继服务的 Key 是：$KEY"
@@ -38,7 +45,7 @@ rustdesk_menu() {
             else
                 echo "未找到 Key，请检查安装日志或手动查看 /etc/rustdesk/ 目录。"
             fi
-            rm -f rustdesk_install.log  # 清理临时日志
+            rm -f rustdesk_install.log
             ;;
         0)
             echo "返回主菜单..."
@@ -57,7 +64,7 @@ echo "1. 安装节点面板 (x-ui)"
 echo "2. 安装 BBR 加速"
 echo "3. 关闭防火墙"
 echo "4. 修复无法下载 GitHub 文件"
-echo "5. 部署 RustDesk 中继服务"  # 子菜单
+echo "5. 部署 RustDesk 中继服务"
 echo "0. 退出"
 read -p "请输入选项 (0-5): " choice
 
@@ -82,12 +89,12 @@ case $choice in
         ;;
     4)
         echo "正在修复 GitHub 文件下载问题..."
-        sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+        sudo sed -i 's parlamentolist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
         sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
         echo "修复完成，请尝试再次下载！"
         ;;
     5)
-        rustdesk_menu  # 调用子菜单
+        rustdesk_menu
         ;;
     0)
         echo "退出脚本，谢谢使用！"
