@@ -32,4 +32,15 @@ case $choice in
     4)
         echo "正在修复 GitHub 文件下载问题..."
         sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
-        sudo sed -i 's|#
+        sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+        echo "修复完成，请尝试再次下载！"
+        ;;
+    0)
+        echo "退出脚本，谢谢使用！"
+        exit 0
+        ;;
+    *)
+        echo "无效选项，请输入 0-4 之间的数字！"
+        exit 1
+        ;;
+esac
