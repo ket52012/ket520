@@ -13,7 +13,7 @@ rustdesk_menu() {
         1)
             echo "正在检查并安装 firewalld..."
             if ! command -v firewall-cmd &> /dev/null; then
-                yum install -y firewalld
+                yum install -y firewalld firewall-tools
                 if [ $? -ne 0 ]; then
                     echo "安装 firewalld 失败，请检查网络或 yum 配置！"
                     return
@@ -32,18 +32,16 @@ rustdesk_menu() {
             echo "正在安装 RustDesk 中继服务..."
             wget https://raw.githubusercontent.com/techahold/rustdeskinstall/master/install.sh
             chmod +x install.sh
-            # 自动输入 1 选择本机 IP，并捕获输出
-            echo "1" | ./install.sh | tee rustdesk_install.log
+            # 自动输入 1（选择 IP）并处理后续交互
+            (echo "1"; echo "1"; echo "") | ./install.sh | tee rustdesk_install.log
             echo "安装完成！"
             echo "正在提取中继服务的 Key..."
-            KEY=$(grep -i "key" rustdesk_install.log | awk '{print $NF}')
+            KEY=$(grep -i "Your public key is" rustdesk_install.log | awk -F'= ' '{print $2}')
             if [ -n "$KEY" ]; then
                 echo "中继服务的 Key 是：$KEY"
-            elif [ -f "/etc/rustdesk/id" ]; then
-                echo "中继服务的 Key 是："
-                cat /etc/rustdesk/id
             else
-                echo "未找到 Key，请检查安装日志或手动查看 /etc/rustdesk/ 目录。"
+                echo "未找到 Key，请检查安装日志或手动查看输出。"
+                cat rustdesk_install.log
             fi
             rm -f rustdesk_install.log
             ;;
@@ -89,7 +87,7 @@ case $choice in
         ;;
     4)
         echo "正在修复 GitHub 文件下载问题..."
-        sudo sed -i 's parlamentolist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+        sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
         sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
         echo "修复完成，请尝试再次下载！"
         ;;
