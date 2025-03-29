@@ -72,8 +72,8 @@ db.serialize(() => {
       const defaultConfig = {
         receiveAddress: 'TH7HuaiBSdQZRoKKfaXFVqKxGgtDLohntv',
         energyPerTrx: 64000,
-        apiKey: '385C33D4E3A644B58552E0EE841EC073',
-        apiSecret: '054933519A15DB5A7E64DA92931CE9BD1390C25E3643A71BB579EF7C4453E42F',
+        apiKey: '你的API',
+        apiSecret: '你的API Secret',
         username: '123',
         password: '123',
         twoFactorSecret: null,
