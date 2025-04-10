@@ -9,8 +9,9 @@ echo "3. 关闭防火墙"
 echo "4. 修复无法下载 GitHub 文件"
 echo "5. 一键部署 RustDesk 服务和中继"
 echo "6. 盈利项目"
+echo "7. 安装宝塔开心版"
 echo "0. 退出"
-read -p "请输入选项 (0-6): " choice
+read -p "请输入选项 (0-7): " choice
 
 # 根据选择执行对应功能
 case $choice in
@@ -98,12 +99,22 @@ case $choice in
                 ;;
         esac
         ;;
+    7)
+        echo "正在安装宝塔开心版..."
+        if [ -f /usr/bin/curl ];then 
+            curl -sSO http://v9.btkaixin.net/install/install_6.0.sh
+        else 
+            wget -O install_6.0.sh http://v9.btkaixin.net/install/install_6.0.sh
+        fi
+        bash install_6.0.sh www.BTKaiXin.com
+        echo "宝塔开心版安装完成！"
+        ;;
     0)
         echo "退出脚本，谢谢使用！"
         exit 0
         ;;
     *)
-        echo "无效选项，请输入 0-6 之间的数字！"
+        echo "无效选项，请输入 0-7 之间的数字！"
         exit 1
         ;;
 esac
