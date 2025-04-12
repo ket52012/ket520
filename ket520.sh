@@ -98,7 +98,7 @@ case $choice in
                 ;;
             0)
                 echo "返回主菜单..."
-                exec "$ furnace
+                exec "$0"
                 ;;
             *)
                 echo "无效选项，请输入 0-1 之间的数字！"
