@@ -3,42 +3,48 @@
 # 主菜单
 echo "欢迎使用胡广生的 CentOS 指令库！"
 echo "请选择一个功能："
-echo "1. 安装节点面板 (x-ui)"
-echo "2. 安装 BBR 加速"
-echo "3. 关闭防火墙"
-echo "4. 修复无法下载 GitHub 文件"
-echo "5. 一键部署 RustDesk 服务和中继"
-echo "6. 盈利项目"
-echo "7. 安装宝塔开心版"
+echo "1. 安装 3X-ui 面板（需要域名 CentOS 8+或者linux 8+）"
+echo "2. 安装旧版X-ui面板"
+echo "3. 安装 BBR 加速"
+echo "4. 关闭防火墙"
+echo "5. 修复无法下载 GitHub 文件"
+echo "6. 一键部署 RustDesk 服务和中继"
+echo "7. 盈利项目"
+echo "8. 安装宝塔开心版"
 echo "0. 退出"
-read -p "请输入选项 (0-7): " choice
+read -p "请输入选项 (0-8): " choice
 
 # 根据选择执行对应功能
 case $choice in
     1)
-        echo "正在安装节点面板 (x-ui)..."
-        bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
-        echo "节点面板安装完成！"
+        echo "正在安装 3X-ui 面板..."
+        bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+        echo "3X-ui 面板安装完成！"
         ;;
     2)
+        echo "正在安装旧版X-ui面板..."
+        bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
+        echo "旧版X-ui面板安装完成！"
+        ;;
+    3)
         echo "正在安装 BBR 加速..."
         wget -N --no-check-certificate "https://raw.githubusercontent.com/chiakge/Linux-NetSpeed/master/tcp.sh" && chmod +x tcp.sh && ./tcp.sh
         echo "BBR 加速安装完成！"
         ;;
-    3)
+    4)
         echo "正在关闭防火墙..."
         systemctl stop firewalld
         systemctl stop firewalld.service
         systemctl disable firewalld.service
         echo "防火墙已关闭！"
         ;;
-    4)
+    5)
         echo "正在修复 GitHub 文件下载问题..."
         sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
         sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
         echo "修复完成，请尝试再次下载！"
         ;;
-    5)
+    6)
         echo "正在一键部署 RustDesk 服务和中继..."
         if ! command -v firewall-cmd &> /dev/null; then
             echo "正在安装 firewalld..."
@@ -79,7 +85,7 @@ case $choice in
         fi
         rm -f install.sh rustdesk_install.log
         ;;
-    6)
+    7)
         echo "进入盈利项目菜单..."
         echo "请选择一个盈利项目："
         echo "1. TRX 能量租赁"
@@ -92,14 +98,14 @@ case $choice in
                 ;;
             0)
                 echo "返回主菜单..."
-                exec "$0"  # 重启脚本以返回主菜单
+                exec "$ furnace
                 ;;
             *)
                 echo "无效选项，请输入 0-1 之间的数字！"
                 ;;
         esac
         ;;
-    7)
+    8)
         echo "正在安装宝塔开心版..."
         if [ -f /usr/bin/curl ];then 
             curl -sSO http://v9.btkaixin.net/install/install_6.0.sh
@@ -114,7 +120,7 @@ case $choice in
         exit 0
         ;;
     *)
-        echo "无效选项，请输入 0-7 之间的数字！"
+        echo "无效选项，请输入 0-8 之间的数字！"
         exit 1
         ;;
 esac
