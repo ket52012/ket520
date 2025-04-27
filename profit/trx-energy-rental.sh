@@ -1315,5 +1315,5 @@ echo "开放 3000 端口..."
 firewall-cmd --add-port=3000/tcp --permanent && \
 firewall-cmd --reload
 
-# 完成提示
+# 完成提示 
 echo "TRX 能量租赁项目部署完成！请访问 http://<您的服务器IP>:3000"
