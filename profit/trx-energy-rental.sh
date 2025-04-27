@@ -2,12 +2,34 @@
 
 # 更新系统并安装基础环境
 echo "更新系统并安装基础环境..."
-yum -y update && yum -y install epel-release && yum -y install git curl wget npm sqlite pm2
-pm2 update
+yum -y update && yum -y install epel-release && yum -y install git curl wget npm sqlite
 
-# 安装 Node.js
-echo "安装 Node.js..."
-curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - && yum -y install nodejs
+# 检查并安装 Node.js
+echo "检查并安装 Node.js..."
+if ! command -v node &> /dev/null; then
+    echo "Node.js 未安装，正在安装..."
+    curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - && yum -y install nodejs
+else
+    echo "Node.js 已安装，版本：$(node -v)"
+fi
+
+# 检查并安装 pm2
+echo "检查并安装 pm2..."
+if ! command -v pm2 &> /dev/null; then
+    echo "pm2 未安装，正在安装..."
+    npm install -g pm2
+    # 确保 pm2 命令可用，添加到 PATH
+    PM2_PATH=$(npm config get prefix)/bin
+    export PATH=$PATH:$PM2_PATH
+    echo "export PATH=\$PATH:$PM2_PATH" >> ~/.bashrc
+    source ~/.bashrc
+else
+    echo "pm2 已安装，版本：$(pm2 --version)"
+fi
+
+# 更新 pm2
+echo "更新 pm2..."
+pm2 update
 
 # 创建项目目录
 echo "创建项目目录..."
@@ -266,7 +288,7 @@ async function returnEnergy(recipientAddress, energyAmount, txID) {
 
 async function getEnergyPrice() {
   try {
-    const apiKey = await getConfig('apiKey');
+    const apiKey = await getConfig(')/$(apiKey');
     const apiSecret = await getConfig('apiSecret');
     const response = await axios.get(ITRX_PRICE_URL, {
       params: { energy_amount: 64000, period: '1H' },
@@ -1310,10 +1332,37 @@ npm install && \
 pm2 start index.js --name trx-energy && \
 pm2 save
 
-# 开放 3000 端口
-echo "开放 3000 端口..."
-firewall-cmd --add-port=3000/tcp --permanent && \
-firewall-cmd --reload
+# 检查并安装 firewalld，开放 3000 端口
+echo "检查并安装 firewalld..."
+if ! command -v firewall-cmd &> /dev/null; then
+    echo "firewalld 未安装，正在安装..."
+    yum install -y firewalld
+    if [ $? -ne 0 ]; then
+        echo "警告：firewalld 安装失败，尝试使用 iptables 开放端口..."
+        # 检查是否安装 iptables
+        if ! command -v iptables &> /dev/null; then
+            echo "iptables 未安装，正在安装..."
+            yum install -y iptables-services
+        fi
+        # 使用 iptables 开放 3000 端口
+        iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
+        # 保存 iptables 规则
+        service iptables save 2>/dev/null || echo "警告：iptables 规则保存失败，请手动保存"
+    else
+        # 启动并启用 firewalld
+        systemctl start firewalld
+        systemctl enable firewalld
+        # 开放 3000 端口
+        echo "开放 3000 端口..."
+        firewall-cmd --add-port=3000/tcp --permanent
+        firewall-cmd --reload
+    fi
+else
+    # firewalld 已安装，直接开放端口
+    echo "开放 3000 端口..."
+    firewall-cmd --add-port=3000/tcp --permanent
+    firewall-cmd --reload
+fi
 
 # 完成提示 
 echo "TRX 能量租赁项目部署完成！请访问 http://<您的服务器IP>:3000"
