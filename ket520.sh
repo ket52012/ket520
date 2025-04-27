@@ -94,20 +94,20 @@ case $choice in
         case $profit_choice in
             1)
                 echo "正在部署 TRX 能量租赁项目..."
-                # 使用当前目录作为基准
-                SCRIPT_DIR=$(pwd)
-                TRX_SCRIPT="$SCRIPT_DIR/profit/trx-energy-rental.sh"
-                
+                # 使用当前工作目录作为基准，避免 $0 导致的 /dev/fd 问题
+                BASE_DIR=$(pwd)
+                TRX_SCRIPT="$BASE_DIR/profit/trx-energy-rental.sh"
+
                 # 调试：检查文件是否存在
                 if [ -f "$TRX_SCRIPT" ]; then
                     echo "找到文件：$TRX_SCRIPT"
                     bash "$TRX_SCRIPT"
                 else
                     echo "错误：文件 $TRX_SCRIPT 不存在"
-                    echo "当前目录：$(pwd)"
-                    ls -l "$SCRIPT_DIR/profit" 2>/dev/null || echo "profit 目录不存在"
+                    echo "当前目录：$BASE_DIR"
+                    ls -l "$BASE_DIR/profit" 2>/dev/null || echo "profit 目录不存在"
                     echo "尝试从 GitHub 下载文件..."
-                    mkdir -p "$SCRIPT_DIR/profit"
+                    mkdir -p "$BASE_DIR/profit"
                     wget https://raw.githubusercontent.com/ket52012/ket520/main/profit/trx-energy-rental.sh -O "$TRX_SCRIPT" 2>/dev/null
                     if [ -f "$TRX_SCRIPT" ]; then
                         echo "文件下载成功，设置权限并执行..."
@@ -121,7 +121,8 @@ case $choice in
                 ;;
             0)
                 echo "返回主菜单..."
-                exec bash "$0"
+                # 通过管道运行时，$0 可能是 /dev/fd/63，需显式调用 bash
+                exec bash -c "bash <(cat $0)"
                 ;;
             *)
                 echo "无效选项，请输入 0-1 之间的数字！"
