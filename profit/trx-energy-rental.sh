@@ -2,15 +2,41 @@
 
 # 更新系统并安装基础环境
 echo "更新系统并安装基础环境..."
-yum -y update && yum -y install epel-release && yum -y install git curl wget npm sqlite
+yum -y update && yum -y install epel-release && yum -y install git curl wget sqlite
 
-# 检查并安装 Node.js
+# 检查并安装 Node.js（CentOS 7 兼容版本：Node.js 16.x）
 echo "检查并安装 Node.js..."
 if ! command -v node &> /dev/null; then
-    echo "Node.js 未安装，正在安装..."
-    curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - && yum -y install nodejs
+    echo "Node.js 未安装，正在安装 Node.js 16.x（CentOS 7 兼容版本）..."
+    # 安装 Node.js 16.x
+    curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
+    if [ $? -ne 0 ]; then
+        echo "错误：Node.js 16.x 安装脚本下载失败，尝试备用方法..."
+        # 备用方法：手动添加 NodeSource 仓库并安装
+        cat << 'EOF' > /etc/yum.repos.d/nodesource.repo
+[nodesource]
+name=Node.js Packages for Enterprise Linux 7 - $basearch
+baseurl=https://rpm.nodesource.com/pub_16.x/el/7/$basearch
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.nodesource.com/gpgkey/nodesource.gpg.key
+EOF
+        yum install -y nodejs
+    else
+        yum install -y nodejs
+    fi
+    if [ $? -ne 0 ]; then
+        echo "错误：Node.js 安装失败，请检查 yum 源或网络连接！"
+        exit 1
+    fi
 else
     echo "Node.js 已安装，版本：$(node -v)"
+fi
+
+# 检查 npm 是否可用
+if ! command -v npm &> /dev/null; then
+    echo "错误：npm 未安装，Node.js 安装可能出现问题！"
+    exit 1
 fi
 
 # 检查并安装 pm2
@@ -18,11 +44,19 @@ echo "检查并安装 pm2..."
 if ! command -v pm2 &> /dev/null; then
     echo "pm2 未安装，正在安装..."
     npm install -g pm2
-    # 确保 pm2 命令可用，添加到 PATH
+    if [ $? -ne 0 ]; then
+        echo "错误：pm2 安装失败，请检查 npm 配置或网络连接！"
+        exit 1
+    fi
+    # 确保 pm2 命令可用
     PM2_PATH=$(npm config get prefix)/bin
     export PATH=$PATH:$PM2_PATH
     echo "export PATH=\$PATH:$PM2_PATH" >> ~/.bashrc
     source ~/.bashrc
+    if ! command -v pm2 &> /dev/null; then
+        echo "错误：pm2 安装后仍不可用，请检查 npm 全局路径！"
+        exit 1
+    fi
 else
     echo "pm2 已安装，版本：$(pm2 --version)"
 fi
@@ -288,7 +322,7 @@ async function returnEnergy(recipientAddress, energyAmount, txID) {
 
 async function getEnergyPrice() {
   try {
-    const apiKey = await getConfig(')/$(apiKey');
+    const apiKey = await getConfig('apiKey');
     const apiSecret = await getConfig('apiSecret');
     const response = await axios.get(ITRX_PRICE_URL, {
       params: { energy_amount: 64000, period: '1H' },
@@ -936,7 +970,8 @@ cat << 'EOF' > /root/trx-energy-rental/public/dashboard.html
           <form id="cleanCacheForm">
             <div class="mb-3">
               <label class="form-label">保留最近几天的数据</label>
-              <input type="number" class="form-control" id="daysToKeep" value="1" min="1">
+              <input type="number" class="form-control" id="daysToKeep" value="1" min=" Código
+1">
             </div>
             <button type="submit" class="btn btn-warning btn-custom">清理缓存</button>
           </form>
@@ -1336,6 +1371,9 @@ pm2 save
 echo "检查并安装 firewalld..."
 if ! command -v firewall-cmd &> /dev/null; then
     echo "firewalld 未安装，正在安装..."
+    # 修复 CentOS 7 的 yum 源（可能已失效）
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
     yum install -y firewalld
     if [ $? -ne 0 ]; then
         echo "警告：firewalld 安装失败，尝试使用 iptables 开放端口..."
@@ -1343,11 +1381,23 @@ if ! command -v firewall-cmd &> /dev/null; then
         if ! command -v iptables &> /dev/null; then
             echo "iptables 未安装，正在安装..."
             yum install -y iptables-services
+            if [ $? -ne 0 ]; then
+                echo "错误：iptables 安装失败，请手动开放 3000 端口！"
+                echo "命令参考：iptables -A INPUT -p tcp --dport 3000 -j ACCEPT"
+            else
+                # 启动 iptables 服务
+                systemctl start iptables
+                systemctl enable iptables
+                # 使用 iptables 开放 3000 端口
+                iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
+                # 保存 iptables 规则
+                service iptables save 2>/dev/null || echo "警告：iptables 规则保存失败，请手动保存：service iptables save"
+            fi
+        else
+            # iptables 已安装，直接开放端口
+            iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
+            service iptables save 2>/dev/null || echo "警告：iptables 规则保存失败，请手动保存：service iptables save"
         fi
-        # 使用 iptables 开放 3000 端口
-        iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
-        # 保存 iptables 规则
-        service iptables save 2>/dev/null || echo "警告：iptables 规则保存失败，请手动保存"
     else
         # 启动并启用 firewalld
         systemctl start firewalld
