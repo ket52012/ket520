@@ -94,7 +94,31 @@ case $choice in
         case $profit_choice in
             1)
                 echo "正在部署 TRX 能量租赁项目..."
-                bash ./profit/trx-energy-rental.sh
+                # 使用基于脚本位置的路径，确保无论当前目录在哪里都能找到文件
+                SCRIPT_DIR=$(dirname "$0")
+                TRX_SCRIPT="$SCRIPT_DIR/profit/trx-energy-rental.sh"
+                
+                # 调试：检查文件是否存在
+                if [ -f "$TRX_SCRIPT" ]; then
+                    echo "找到文件：$TRX_SCRIPT"
+                    bash "$TRX_SCRIPT"
+                else
+                    echo "错误：文件 $TRX_SCRIPT 不存在"
+                    echo "当前目录：$(pwd)"
+                    echo "脚本所在目录：$SCRIPT_DIR"
+                    ls -l "$SCRIPT_DIR/profit"
+                    echo "尝试从 GitHub 下载文件..."
+                    mkdir -p "$SCRIPT_DIR/profit"
+                    wget https://raw.githubusercontent.com/ket52012/ket520/main/profit/trx-energy-rental.sh -O "$TRX_SCRIPT"
+                    if [ -f "$TRX_SCRIPT" ]; then
+                        echo "文件下载成功，设置权限并执行..."
+                        chmod +x "$TRX_SCRIPT"
+                        bash "$TRX_SCRIPT"
+                    else
+                        echo "文件下载失败，请检查网络或 GitHub 仓库"
+                        exit 1
+                    fi
+                fi
                 ;;
             0)
                 echo "返回主菜单..."
