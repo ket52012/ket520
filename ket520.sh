@@ -11,8 +11,9 @@ echo "5. 修复无法下载 GitHub 文件"
 echo "6. 一键部署 RustDesk 服务和中继"
 echo "7. 盈利项目"
 echo "8. 安装宝塔开心版"
+echo "9. 飞机代理一键脚本"
 echo "0. 退出"
-read -p "请输入选项 (0-8): " choice
+read -p "请输入选项 (0-9): " choice
 
 # 根据选择执行对应功能
 case $choice in
@@ -139,12 +140,18 @@ case $choice in
         bash install_6.0.sh www.BTKaiXin.com
         echo "宝塔开心版安装完成！"
         ;;
+    9)
+        echo "正在执行飞机代理一键脚本..."
+        rm -rf /home/mtproxy && mkdir /home/mtproxy && cd /home/mtproxy
+        curl -fsSL -o mtproxy.sh https://github.com/ellermister/mtproxy/raw/master/mtproxy.sh && chmod +x mtproxy.sh && bash mtproxy.sh
+        echo "飞机代理安装完成！"
+        ;;
     0)
         echo "退出脚本，谢谢使用！"
         exit 0
         ;;
     *)
-        echo "无效选项，请输入 0-8 之间的数字！"
+        echo "无效选项，请输入 0-9 之间的数字！"
         exit 1
         ;;
 esac
