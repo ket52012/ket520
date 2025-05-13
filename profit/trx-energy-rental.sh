@@ -141,7 +141,7 @@ db.serialize(() => {
         autoCleanDays: 1
       };
       for (const [key, value] of Object.entries(defaultConfig)) {
-        db.run(`INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)`, [key, JSON.stringify(value)]);
+        db.run(`INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)`, [key, value.toString()]);
       }
     }
   });
@@ -155,14 +155,19 @@ let clients = [];
 async function getConfig(key) {
   return new Promise((resolve) => {
     db.get(`SELECT value FROM config WHERE key = ?`, [key], (err, row) => {
-      resolve(row ? JSON.parse(row.value) : null);
+      if (err) {
+        console.error('getConfig error:', err);
+        resolve(null);
+      } else {
+        resolve(row ? row.value : null); // 直接返回原始值，跳过 JSON.parse
+      }
     });
   });
 }
 
 async function setConfig(key, value) {
   return new Promise((resolve) => {
-    db.run(`INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)`, [key, JSON.stringify(value)], resolve);
+    db.run(`INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)`, [key, value.toString()], resolve);
   });
 }
 
@@ -197,9 +202,9 @@ async function cleanAllRecords() {
 }
 
 async function startAutoClean() {
-  const autoCleanEnabled = await getConfig('autoCleanEnabled');
-  const autoCleanInterval = await getConfig('autoCleanInterval') || 24;
-  const autoCleanDays = await getConfig('autoCleanDays') || 1;
+  const autoCleanEnabled = await getConfig('autoCleanEnabled') === 'true';
+  const autoCleanInterval = Number(await getConfig('autoCleanInterval')) || 24;
+  const autoCleanDays = Number(await getConfig('autoCleanDays')) || 1;
   if (autoCleanEnabled) {
     setInterval(() => cleanCache(autoCleanDays), autoCleanInterval * 60 * 60 * 1000);
     cleanCache(autoCleanDays);
@@ -257,7 +262,7 @@ async function checkTransactions() {
         continue;
       }
 
-      const energyPerTrx = await getConfig('energyPerTrx');
+      const energyPerTrx = Number(await getConfig('energyPerTrx'));
       const energyToReturn = Math.floor(amount * energyPerTrx);
 
       if (energyToReturn <= 0 || energyToReturn > 1000000) {
@@ -352,7 +357,7 @@ app.get('/notifications', (req, res) => {
 
 function broadcastNotification(message) {
   getConfig('toastEnabled').then(toastEnabled => {
-    if (toastEnabled) {
+    if (toastEnabled === 'true') {
       clients.forEach(client => client.write(`data: ${JSON.stringify({ type: 'notification', message })}\n\n`));
     }
   });
@@ -385,6 +390,7 @@ app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const storedUsername = await getConfig('username');
   const storedPassword = await getConfig('password');
+  console.log('Login attempt:', { username, storedUsername, password, storedPassword });
   if (username === storedUsername && password === storedPassword) {
     res.json({ success: true });
   } else {
@@ -409,22 +415,22 @@ app.get('/config', async (req, res) => {
   const priceData = await getEnergyPrice();
   res.json({
     receiveAddress: await getConfig('receiveAddress'),
-    energyPerTrx: await getConfig('energyPerTrx'),
+    energyPerTrx: Number(await getConfig('energyPerTrx')),
     apiKey: await getConfig('apiKey'),
     apiSecret: await getConfig('apiSecret'),
-    twoFactorEnabled: await getConfig('twoFactorEnabled'),
-    toastEnabled: await getConfig('toastEnabled'),
-    soundEnabled: await getConfig('soundEnabled'),
-    autoCleanEnabled: await getConfig('autoCleanEnabled'),
-    autoCleanInterval: await getConfig('autoCleanInterval'),
-    autoCleanDays: await getConfig('autoCleanDays'),
+    twoFactorEnabled: await getConfig('twoFactorEnabled') === 'true',
+    toastEnabled: await getConfig('toastEnabled') === 'true',
+    soundEnabled: await getConfig('soundEnabled') === 'true',
+    autoCleanEnabled: await getConfig('autoCleanEnabled') === 'true',
+    autoCleanInterval: Number(await getConfig('autoCleanInterval')),
+    autoCleanDays: Number(await getConfig('autoCleanDays')),
     energyPrice: priceData
   });
 });
 
 app.post('/update-config', async (req, res) => {
   const { receiveAddress, energyPerTrx, apiKey, apiSecret, password, twoFactorCode, toastEnabled, soundEnabled } = req.body;
-  const twoFactorEnabled = await getConfig('twoFactorEnabled');
+  const twoFactorEnabled = await getConfig('twoFactorEnabled') === 'true';
   if (twoFactorEnabled && !await verifyTwoFactor(twoFactorCode)) {
     return res.json({ success: false, message: '谷歌验证码错误' });
   }
@@ -433,8 +439,8 @@ app.post('/update-config', async (req, res) => {
   if (apiKey) await setConfig('apiKey', apiKey);
   if (apiSecret) await setConfig('apiSecret', apiSecret);
   if (password) await setConfig('password', password);
-  if (typeof toastEnabled !== 'undefined') await setConfig('toastEnabled', toastEnabled);
-  if (typeof soundEnabled !== 'undefined') await setConfig('soundEnabled', soundEnabled);
+  if (typeof toastEnabled !== 'undefined') await setConfig('toastEnabled', toastEnabled.toString());
+  if (typeof soundEnabled !== 'undefined') await setConfig('soundEnabled', soundEnabled.toString());
   res.json({ success: true });
 });
 
@@ -451,7 +457,7 @@ app.post('/clean-all-records', async (req, res) => {
 
 app.post('/update-auto-clean', async (req, res) => {
   const { enabled, interval, days } = req.body;
-  await setConfig('autoCleanEnabled', enabled);
+  await setConfig('autoCleanEnabled', enabled.toString());
   await setConfig('autoCleanInterval', interval || 24);
   await setConfig('autoCleanDays', days || 1);
   startAutoClean();
@@ -468,7 +474,7 @@ app.get('/two-factor-setup', async (req, res) => {
 app.post('/two-factor-enable', async (req, res) => {
   const { code } = req.body;
   if (await verifyTwoFactor(code)) {
-    await setConfig('twoFactorEnabled', true);
+    await setConfig('twoFactorEnabled', 'true');
     res.json({ success: true });
   } else {
     res.json({ success: false, message: '验证码错误' });
@@ -477,12 +483,12 @@ app.post('/two-factor-enable', async (req, res) => {
 
 app.post('/two-factor-disable', async (req, res) => {
   const { code } = req.body;
-  const twoFactorEnabled = await getConfig('twoFactorEnabled');
+  const twoFactorEnabled = await getConfig('twoFactorEnabled') === 'true';
   if (!twoFactorEnabled) {
     return res.json({ success: false, message: '谷歌验证未启用' });
   }
   if (await verifyTwoFactor(code)) {
-    await setConfig('twoFactorEnabled', false);
+    await setConfig('twoFactorEnabled', 'false');
     await setConfig('twoFactorSecret', null);
     res.json({ success: true, message: '谷歌验证已禁用' });
   } else {
@@ -970,8 +976,7 @@ cat << 'EOF' > /root/trx-energy-rental/public/dashboard.html
           <form id="cleanCacheForm">
             <div class="mb-3">
               <label class="form-label">保留最近几天的数据</label>
-              <input type="number" class="form-control" id="daysToKeep" value="1" min=" Código
-1">
+              <input type="number" class="form-control" id="daysToKeep" value="1" min="1">
             </div>
             <button type="submit" class="btn btn-warning btn-custom">清理缓存</button>
           </form>
@@ -1103,7 +1108,7 @@ cat << 'EOF' > /root/trx-energy-rental/public/dashboard.html
       if (data.type === 'notification') {
         showToast(data.message);
       } else if (data.type === 'data') {
-        document.getElementById('todayTrx').textContent = data.today.trx;
+        document9430.getElementById('todayTrx').textContent = data.today.trx;
         document.getElementById('todayEnergy').textContent = data.today.energy;
         document.getElementById('todayCount').textContent = data.today.count;
         const historyTable = document.getElementById('historyTable');
