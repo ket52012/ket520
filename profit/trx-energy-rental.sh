@@ -159,7 +159,7 @@ async function getConfig(key) {
         console.error('getConfig error:', err);
         resolve(null);
       } else {
-        resolve(row ? row.value : null); // 直接返回原始值，跳过 JSON.parse
+        resolve(row ? row.value : null);
       }
     });
   });
@@ -1108,7 +1108,7 @@ cat << 'EOF' > /root/trx-energy-rental/public/dashboard.html
       if (data.type === 'notification') {
         showToast(data.message);
       } else if (data.type === 'data') {
-        document9430.getElementById('todayTrx').textContent = data.today.trx;
+        document.getElementById('todayTrx').textContent = data.today.trx;
         document.getElementById('todayEnergy').textContent = data.today.energy;
         document.getElementById('todayCount').textContent = data.today.count;
         const historyTable = document.getElementById('historyTable');
@@ -1372,6 +1372,11 @@ npm install && \
 pm2 start index.js --name trx-energy && \
 pm2 save
 
+# 配置开机自启
+echo "配置开机自启..."
+pm2 startup
+# 运行生成的命令（根据系统返回的命令，例如：systemctl enable pm2-root）
+
 # 检查并安装 firewalld，开放 3000 端口
 echo "检查并安装 firewalld..."
 if ! command -v firewall-cmd &> /dev/null; then
@@ -1396,12 +1401,12 @@ if ! command -v firewall-cmd &> /dev/null; then
                 # 使用 iptables 开放 3000 端口
                 iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
                 # 保存 iptables 规则
-                service iptables save 2>/dev/null || echo "警告：iptables 规则保存失败，请手动保存：service iptables save"
+                systemctl save iptables
             fi
         else
             # iptables 已安装，直接开放端口
             iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
-            service iptables save 2>/dev/null || echo "警告：iptables 规则保存失败，请手动保存：service iptables save"
+            systemctl save iptables
         fi
     else
         # 启动并启用 firewalld
